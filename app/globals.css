@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f3f4f7;
+  --surface: #ffffff;
+  --fg: #15171f;
+  --muted: #6a6f80;
+  --line: #e2e4eb;
+  --tabbar-h: 64px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1116;
+    --surface: #181b23;
+    --fg: #eceef4;
+    --muted: #9196a6;
+    --line: #2a2e3a;
+  }
+}
+
+/* --accent-light/--accent-dark are set per project by AppShell. */
+.shell {
+  --accent: var(--accent-light);
+}
+@media (prefers-color-scheme: dark) {
+  .shell {
+    --accent: var(--accent-dark);
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-figtree), system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-figtree), sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: 2px;
+}
