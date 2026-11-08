@@ -11,6 +11,7 @@ async function connect() {
     db.collection("posts").createIndex({ projectId: 1, externalId: 1 }, { unique: true }),
     db.collection("posts").createIndex({ projectId: 1, section: 1, scheduledAt: 1 }),
     db.collection("posts").createIndex({ projectId: 1, "source.automationId": 1, localDate: 1 }),
+    db.collection("posts").createIndex({ "media.assetId": 1 }, { sparse: true }),
     db.collection("batches").createIndex({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 }),
   ]);
   return db;

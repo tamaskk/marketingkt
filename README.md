@@ -37,17 +37,17 @@ Minden írás `Authorization: Bearer $UPLOAD_API_KEY` fejlécet kér.
 **1. Előbb a fájlok** (posztonként, médiánként):
 
 ```bash
-curl -s -X POST http://localhost:3000/api/upload \
+curl -s -X POST https://marketingkt.vercel.app/api/upload \
   -H "Authorization: Bearer $UPLOAD_API_KEY" -H "Content-Type: application/json" \
   -d '{"projectId":"spinvincible","filename":"poszt.png","contentType":"image/png","size":123456}'
-# → {"url":"https://...","key":"spinvincible/1730...-poszt.png"}
+# → {"url":"https://...","key":"spinvincible/<assetId>-poszt.png","assetId":"<32 hex>","publicUrl":"https://marketingkt.vercel.app/m/<assetId>"}
 curl -X PUT "<url>" -H "Content-Type: image/png" --data-binary @poszt.png
 ```
 
 **2. Utána a posztok**, a kapott `key`-ekkel:
 
 ```bash
-curl -s -X POST http://localhost:3000/api/posts/batch \
+curl -s -X POST https://marketingkt.vercel.app/api/posts/batch \
   -H "Authorization: Bearer $UPLOAD_API_KEY" -H "Content-Type: application/json" -d @batch.json
 ```
 
@@ -70,7 +70,7 @@ curl -s -X POST http://localhost:3000/api/posts/batch \
         "firstComment": "opcionális",
         "title": "opcionális, főleg a Terv szekcióhoz"
       },
-      "media": [{ "key": "spinvincible/1730...-poszt.png", "order": 0, "altText": "Mi látszik a képen" }],
+      "media": [{ "key": "spinvincible/<assetId>-poszt.png", "order": 0, "altText": "Mi látszik a képen" }],
       "tags": ["pillar:debate"],
       "notes": "belső megjegyzés"
     }
@@ -92,6 +92,12 @@ curl -s -X POST http://localhost:3000/api/posts/batch \
 - `externalId` — a poszt helyéből képzett, **nem véletlen** azonosító (projekt + nap + szekció + sorszám). Ha egy új futás ugyanazt az `externalId`-t küldi, a poszt **frissül**, nem duplikálódik. Ugyanarra a napra jövő új `externalId` hozzáadódik.
 
 Válasz: `201 { batchId, replayed, items: [{ externalId, result: "created" | "updated", postId }], archived: [{ externalId, postId }] }`.
+A válasz `items[]` elemeiben a `publicUrls` a poszt médiáinak nyilvános linkje (sorrendben).
+
+**Nyilvános médialink (Metricool & co.):** `GET /m/<assetId>`, belépés nélkül. 302-vel átirányít egy 1 órás R2 presigned URL-re (Content-Type, Content-Length és Range/206 működik). Csak élő (nem archivált) poszt médiájára él; `posted` poszté az utolsó módosítás után 30 napig. Ismeretlen asset: 404. IP-nként max. 60 kérés/perc (429). A bucket privát marad.
+
+**Olvasás API-kulccsal:** `GET /api/posts?projectId=<id>&externalId=<id>` és `GET /api/posts/<postId>`, `Authorization: Bearer <kulcs>`. Minden `media[]` elemben ott a `publicUrl`. A kulcs mind a négy projektet olvashatja.
+
 Hibák: `401` kulcs, `400` rossz JSON, `409` batchId újrahasználva, `422` `VALIDATION_FAILED` / `MEDIA_INVALID` (az `issues` mezőben a pontos hely, pl. `posts[3].media[0].key`). 422-nél **semmi nem mentődik**: javítsd és küldd újra.
 
 R2 CORS beállítás nem kell, mert nem böngészőből megy a feltöltés.
@@ -115,5 +121,6 @@ R2 CORS beállítás nem kell, mert nem böngészőből megy a feltöltés.
 - `lib/posts.ts` — a batch validációja. `lib/mongo.ts` — Mongo kapcsolat + indexek.
 - `app/api/upload/route.ts` — API kulcsot kér, ellenőrzi a típust (kép/videó) és a méretet (max. 100 MB), majd 5 percig érvényes feltöltési URL-t ad.
 - `app/api/posts/batch/route.ts` — posztok mentése (idempotens upsert).
-- `app/api/posts/route.ts` — egy projekt posztjai a UI-nak (belépés kell).
+- `app/api/posts/route.ts` — egy projekt posztjai (belépés vagy API kulcs).
+- `app/m/[assetId]/route.ts` — nyilvános médialink, presigned R2 átirányítás.
 - `proxy.ts`, `lib/session.ts`, `app/login/page.tsx` — jelszavas belépés.

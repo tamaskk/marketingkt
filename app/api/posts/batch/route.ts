@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { HeadObjectCommand } from "@aws-sdk/client-s3";
 import { authorized } from "@/lib/auth";
+import { assetIdOf, publicUrl } from "@/lib/media";
 import { mongo } from "@/lib/mongo";
 import { localDate, validateBatch, type Issue } from "@/lib/posts";
 import { bucket, r2 } from "@/lib/r2";
@@ -9,7 +10,7 @@ import { bucket, r2 } from "@/lib/r2";
 type BatchResponse = {
   batchId: string;
   replayed: boolean;
-  items: { externalId: string; result: "created" | "updated"; postId: string }[];
+  items: { externalId: string; result: "created" | "updated"; postId: string; publicUrls: (string | null)[] }[];
   archived: { externalId: string; postId: string }[];
 };
 type BatchDoc = { _id: string; requestHash: string; response: BatchResponse; createdAt: Date };
@@ -63,7 +64,13 @@ export async function POST(req: Request) {
         const h = heads.get(m.key);
         if (!h) mediaIssues.push({ path: `posts[${i}].media[${j}].key`, message: "Nincs ilyen fájl az R2-ben." });
         const mimeType = h?.ContentType ?? "";
-        return { ...m, kind: mimeType.startsWith("video/") ? "video" : "image", mimeType, sizeBytes: h?.ContentLength };
+        return {
+          ...m,
+          assetId: assetIdOf(m.key),
+          kind: mimeType.startsWith("video/") ? "video" : "image",
+          mimeType,
+          sizeBytes: h?.ContentLength,
+        };
       });
       const main = media.filter((m) => m.role !== "cover");
       if (p.section === "kep" && !main.some((m) => m.kind === "image"))
@@ -119,6 +126,7 @@ export async function POST(req: Request) {
         externalId: p.externalId,
         result: res.upsertedIds[i] ? "created" : "updated",
         postId: ids.get(p.externalId)!,
+        publicUrls: p.media.map((m) => publicUrl(new URL(req.url).origin, m.assetId)),
       })),
       archived,
     };
