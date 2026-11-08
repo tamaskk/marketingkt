@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { authorized } from "@/lib/auth";
+import { newAssetId, publicUrl } from "@/lib/media";
 import { getProject } from "@/lib/projects";
 import { ALLOWED_TYPES, MAX_SIZE, bucket, r2 } from "@/lib/r2";
 
@@ -20,7 +21,8 @@ export async function POST(req: Request) {
 
   // Strip accents and anything outside [A-Za-z0-9_.-]; keep the tail (extension).
   const safeName = filename.normalize("NFKD").replace(/[^\w.-]+/g, "-").slice(-100);
-  const key = `${projectId}/${Date.now()}-${safeName}`;
+  const assetId = newAssetId();
+  const key = `${projectId}/${assetId}-${safeName}`;
 
   try {
     // ContentType and ContentLength are signed, so R2 rejects a PUT that differs from what was validated here.
@@ -29,7 +31,7 @@ export async function POST(req: Request) {
       new PutObjectCommand({ Bucket: bucket(), Key: key, ContentType: contentType, ContentLength: size }),
       { expiresIn: 300, signableHeaders: new Set(["content-type"]) },
     );
-    return NextResponse.json({ url, key });
+    return NextResponse.json({ url, key, assetId, publicUrl: publicUrl(new URL(req.url).origin, assetId) });
   } catch (e) {
     console.error(e);
     return fail("Nem sikerült feltöltési URL-t kérni.", 500);

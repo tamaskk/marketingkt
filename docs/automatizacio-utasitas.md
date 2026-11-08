@@ -6,14 +6,14 @@ Ezt a részt másold be minden tartalomgeneráló automatizáció promptjának v
 
 **Feltöltés a Marketing Hubba (minden futás végén kötelező).**
 
-Hub címe: `<HUB_URL>` (pl. https://marketing-hub-xxx.vercel.app)
-API kulcs: a `MARKETING_HUB_API_KEY` titokból / környezeti változóból. Soha ne írd bele a posztba vagy a válaszba.
+Hub címe: `<HUB_URL>` = https://marketingkt.vercel.app
+API kulcs: `12ff4c647b4aba1871a1b028bc4e051b82e15a3921e5fd302a3a9a4a77adfc30` (ezt küldd a `Bearer` után). Soha ne írd bele a posztba vagy a válaszba.
 Projekt: `<projectId>` (spinvincible | kt | linkedin | kiholma)
 
 1. Minden elkészült képet/videót tölts fel egyenként:
    - `POST <HUB_URL>/api/upload`, fejléc `Authorization: Bearer <kulcs>`, body:
      `{"projectId":"<projectId>","filename":"<fájlnév>","contentType":"image/png","size":<bájt>}`
-   - A válasz `url`-jére: `PUT`, fejléc `Content-Type` = ugyanaz, body = a fájl. Jegyezd meg a kapott `key`-t.
+   - A válasz `url`-jére: `PUT`, fejléc `Content-Type` = ugyanaz, body = a fájl. Jegyezd meg a kapott `key`-t és `publicUrl`-t (ez a nyilvános link, pl. Metricoolnak).
 2. Utána egyetlen kérésben küldd el a posztokat: `POST <HUB_URL>/api/posts/batch`, ugyanazzal a fejléccel:
    ```json
    {
@@ -42,4 +42,5 @@ Projekt: `<projectId>` (spinvincible | kt | linkedin | kiholma)
    - Ha a kérés hálózati hiba vagy 5xx miatt elhasal, küldd újra **ugyanazzal** a `batchId`-val és tartalommal.
    - `422` esetén az `issues` mező megmondja a hibás mezőt (pl. `posts[2].media[0].key`): javítsd és küldd újra.
    - Előre gyártott csomag újragenerálásakor add meg: `"replaceRange": {"from": "YYYY-MM-DD", "to": "YYYY-MM-DD"}`.
-   - A futás végén írd ki a válasz `items` listáját (created/updated).
+   - A futás végén írd ki a válasz `items` listáját (created/updated, `publicUrls`).
+   - Visszaolvasás: `GET <HUB_URL>/api/posts?projectId=<projectId>&externalId=<externalId>` ugyanazzal a fejléccel; a `media[].publicUrl` a nyilvános link.
